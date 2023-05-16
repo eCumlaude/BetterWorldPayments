@@ -1,503 +1,612 @@
-openapi: 3.1.0
+swagger: '2.0'
 info:
-  version: 1.0.0
-  title: Example.com
-  termsOfService: https://example.com/terms/
+  title: API Better World Payments
+  termsOfService: https://www.fondsen.org/link/terms/
   contact:
-    email: contact@example.com
-    url: http://example.com/contact
+    email: development@fondsen.org
+    url: https://www.fondsen.org/link/contact
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   x-logo:
     url: https://redocly.github.io/openapi-template/logo.png
-  description: |
-    This is an **example** API to demonstrate features of the OpenAPI specification.
-    # Introduction
-    This API definition is intended to to be a good starting point for describing your API in [OpenAPI/Swagger format](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md).
-    It also demonstrates features of the [create-openapi-repo](https://github.com/Redocly/create-openapi-repo) tool and the [Redoc](https://github.com/Redocly/Redoc) documentation engine. Beyond the standard OpenAPI syntax, we use a few  [vendor extensions](https://github.com/Redocly/Redoc/blob/master/docs/redoc-vendor-extensions.md).
-    # OpenAPI Specification
-    The goal of The OpenAPI Specification is to define a standard, language-agnostic interface to REST APIs which allows both humans and computers to discover and understand the capabilities of the service without access to source code, documentation, or through network traffic inspection. When properly defined via OpenAPI, a consumer can  understand and interact with the remote service with a minimal amount of implementation logic. Similar to what interfaces have done for lower-level programming, OpenAPI removes the guesswork in calling the service.
-tags:
-  - name: Echo
-    description: Example echo operations.
-  - name: User
-    description: Operations about users.
-  - name: Tag
-    description: This is a tag description.
-servers:
-  - url: https://{tenant}/api/v1
-    variables:
-      tenant:
-        default: www
-        description: Your tenant id
-  - url: https://example.com/api/v1
+  description: >-
+    This is the JSON Message for creating a payment transaction at Better World
+    Payments and receiving the results.  
+  version: 1.0.0
+host: payments-sandbox.fondsen.org
+basePath: /v1
+schemes:
+  - http
 paths:
-  /users/{username}:
-    parameters:
-      - name: pretty_print
-        in: query
-        description: Pretty print response
-        schema:
-          type: boolean
+  /payments/request:
+    post:
+      tags:
+        - payments
+      summary: Payment Transaction
+      description: "You can use this resource to initialte a payment recquest at our API. This request will trigger the following flow:\r\n\r\n1. After your initial request you will receive a message with a redirect to an authorization page. \r\n2. When the payment is completed our platform redirects the consumer back to your site based on the status of the payment. \r\n3. At the same time we push the status of the transaction to the callback URL you provided. It is also possible to retrieve the current statement using a GET request to one of our other resources,."
+      parameters:
+        - name: Authorization
+          in: header
+          description: "The Authorization Header uses Basic Authorization to request access to our API. You generate this by base64 encrypting:\r\n\r\nyour_code:your_token (don't forget the ':')"
+          type: string
+        - name: Payment_Request
+          in: body
+          description: >-
+            The JSON message you include in the body of your request to initiate
+            a payment
+          schema:
+            $ref: '#/definitions/Payment_Request'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/Payment_Response'
+            xml:
+              name: Payment_Response
+  /payments/ideal/issuers:
     get:
       tags:
-        - User
-      summary: Get user by user name
-      description: |
-        Some description of the operation.
-        You can use `Markdown` here.
-      operationId: getUserByName
+        - payments
+      summary: Overview iDEAL Issuers
+      description: >-
+        If you use the Payment Method iDEAL you want to include this resource.
+        This GET operation returns a list of all the active issuers that support
+        iDEAL-transactions
       parameters:
-        - name: username
-          in: path
-          description: The name that needs to be fetched
-          required: true
-          schema:
-            type: string
-        - name: with_email
-          in: query
-          description: Filter users without email
-          schema:
-            type: boolean
-      security:
-        - main_auth:
-            - read:users
-        - api_key: []
+        - name: Authorization
+          in: header
+          type: string
       responses:
         '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-              example:
-                username: user1
-                email: user@example.com
-        '403':
-          description: Forbidden
-          $ref: '#/components/responses/Problem'
-        '404':
-          description: User not found
-          $ref: '#/components/responses/Problem'
-    put:
+          description: successful operation
+          schema:
+            type: file
+  '/payments/status/{PaymentId}':
+    get:
       tags:
-        - User
-      summary: Updated user
-      description: This can only be done by the logged in user.
-      operationId: updateUser
+        - payments
+      summary: Payment Status
+      description: >-
+        You can call this resource to retrieve the current status of a payment.
+        It is advised to include a call to this endpoint in the return page, for
+        instance the page a customer is returned to after a succesful payment,
+        to update the payment and receive the information about the customer,. 
       parameters:
-        - name: username
+        - name: PaymentId
           in: path
-          description: The name that needs to be updated
+          description: >-
+            This is the Payment Identfifier that has been given to you in our
+            payment response
           required: true
+          type: string
+        - name: Authorization
+          in: header
+          description: "You can Authorize using Basic Authorization:\r\n\r\nyour_code:your_token \r\n\r\nbase64 encrypted (don't forget the ':')"
+          type: string
+      responses:
+        '200':
+          description: successful operation
           schema:
-            type: string
-      security:
-        - main_auth:
-            - write:users
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-          application/xml:
-            schema:
-              $ref: '#/components/schemas/User'
-        description: Updated user object
-        required: true
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Invalid user supplied
-          $ref: '#/components/responses/Problem'
-        '404':
-          description: User not found
-          $ref: '#/components/responses/Problem'
-  /echo:
-    post:
-      tags:
-        - Echo
-      summary: Echo test
-      description: Receive the exact message you've sent
-      operationId: echo
-      security:
-        - api_key: []
-        - basic_auth: []
-      responses:
-        '200':
-          description: OK
-          headers:
-            X-Rate-Limit:
-              description: calls per hour allowed by the user
-              schema:
-                type: integer
-                format: int32
-            X-Expires-After:
-              $ref: '#/components/headers/ExpiresAfter'
-          content:
-            application/json:
-              schema:
-                type: string
-              examples:
-                response:
-                  value: Hello world!
-            application/xml:
-              schema:
-                type: string
-            text/csv:
-              schema:
-                type: string
-        '400':
-          description: Unauthorized
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: string
-              example: Hello world!
-          application/xml:
-            schema:
-              type: string
-              example: Hello world!
-        description: Echo payload
-        required: true
-      x-codeSamples:
-        - lang: C#
-          source: |
-            API.v1.Echo echo = new API.v1.Echo();
-            echo.message = "Hello World!");
-            EchoResponse response = echo.post();
-            if (response.statusCode == HttpStatusCode.Created)
-            {
-              // Success
-            }
-            else
-            {
-              // Something wrong -- check response for errors
-              Console.WriteLine(response.getRawResponse());
-            }
-        - lang: PHP
-          source: |
-            $form = new \API\Entities\Echo();
-            $form->setMessage("Hello World!");
-            try {
-                $pet = $client->echo()->post($form);
-            } catch (UnprocessableEntityException $e) {
-                var_dump($e->getErrors());
-            }
-  /pathItem:
-    post:
-      tags:
-        - Tag
-      summary: Operation summary
-      description: |
-        Operation description **Markdown**.
-      operationId: operationId
-      security:
-        - api_key: []
-        - basic_auth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Schema'
-        description: requestBody description
-        required: true
-      responses:
-        '200':
-          description: OK
-          headers:
-            X-Rate-Limit:
-              description: Calls per hour allowed by the user.
-              schema:
-                type: integer
-                format: int32
-            X-Expires-After:
-              $ref: '#/components/headers/ExpiresAfter'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Schema'
-        '400':
-          $ref: '#/components/responses/Problem'
-  /pathItemWithExamples:
-    post:
-      tags:
-        - Tag
-      summary: Operation summary with examples
-      description: |
-        Operation description **markdown**.
-      operationId: postPathItemWithExamples
-      security:
-        - api_key: []
-        - basic_auth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Schema'
-            examples:
-              mapName:
-                summary: My first example
-                description: My first example's description.
-                value:
-                  stringProperty: tada
-              mapNameDoesNotShowInDocsUnlessSummaryIsNotProvided:
-                value:
-                  stringProperty: checkmark
-        description: requestBody description
-        required: true
-      responses:
-        '200':
-          description: OK
-          headers:
-            X-Rate-Limit:
-              description: calls per hour allowed by the user
-              schema:
-                type: integer
-                format: int32
-            X-Expires-After:
-              $ref: '#/components/headers/ExpiresAfter'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Schema'
-        '400':
-          $ref: '#/components/responses/Problem'
-components:
-  securitySchemes:
-    main_auth:
-      type: oauth2
-      flows:
-        implicit:
-          authorizationUrl: http://example.com/api/oauth/dialog
-          scopes:
-            read:users: read users info
-            write:users: modify or remove users
-    api_key:
-      type: apiKey
-      in: header
-      name: api_key
-    basic_auth:
-      type: http
-      scheme: basic
-  schemas:
-    Email:
-      description: User email address
-      type: string
-      format: test
-      example: john.smith@example.com
-    User:
-      type: object
-      properties:
-        username:
-          description: User supplied username
-          type: string
-          minLength: 4
-          example: John78
-        firstName:
-          description: User first name
-          type: string
-          minLength: 1
-          example: John
-        lastName:
-          description: User last name
-          type: string
-          minLength: 1
-          example: Smith
-        email:
-          $ref: '#/components/schemas/Email'
-    Problem:
-      type: object
-      additionalProperties: true
-      minProperties: 1
-      description: The Problem Details JSON Object [[RFC7807](https://tools.ietf.org/html/rfc7807)].
-      properties:
-        type:
-          type: string
-          description: A URI reference [[RFC3986](https://tools.ietf.org/html/rfc3986)] that identifies the problem type. It should provide human-readable documentation for the problem type. When this member is not present, its value is assumed to be "about:blank".
-          format: uri
-        title:
-          type: string
-          description: A short, human-readable summary of the problem type. It SHOULD NOT change from occurrence to occurrence of the problem, except for purposes of localization.
-        status:
-          type: integer
-          description: The HTTP status code.
-          minimum: 400
-          maximum: 599
-        detail:
-          type: string
-          description: A human-readable explanation specific to this occurrence of the problem.
-        instance:
-          type: string
-          description: A URI reference that identifies the specific occurrence of the problem.  It may or may not yield further information if dereferenced.
-    Schema:
-      type: object
-      title: Scalars
-      properties:
-        stringProperty:
-          description: Property name's description (type is string)
-          type: string
-          examples:
-            - example
-            - sample
-        readOnlyStringProperty:
-          description: Notice this only appears in the response.
-          type: string
-          readOnly: true
-          examples:
-            - example
-        writeOnlyStringProperty:
-          description: Notice this only appears in the request.
-          type: string
-          writeOnly: true
-          examples:
-            - example
-        minLengthString:
-          description: Property name's description (type is string)
-          type: string
-          minLength: 4
-          examples:
-            - example
-        maxLengthString:
-          description: Property name's description (type is string)
-          type: string
-          maxLength: 140
-          examples:
-            - example
-        minAndMaxLengthString:
-          description: Property name's description (type is string)
-          type: string
-          minLength: 4
-          maxLength: 140
-          examples:
-            - example
-        nullableOrStringProperty:
-          description: Property name's description (type is string or null)
-          type:
-            - string
-            - 'null'
-          examples:
-            - example
-        stringEnumValues:
-          description: Property name's description (type is string)
-          type: string
-          enum:
-            - sample
-            - example
-            - specimen
-            - case
-            - instance
-            - illustration
-        stringDateTime:
-          description: Property name's description (type is string, format is date-time)
-          type: string
-          format: date-time
-        stringDate:
-          description: Property name's description (type is string, format is date-time)
-          type: string
-          format: date
-        stringEmail:
-          description: Property name's description (type is string, format is email)
-          type: string
-          format: email
-        stringIpAddressV4:
-          description: Property name's description (type is string, format is ipv4 address)
-          type: string
-          format: ipv4
-        stringIpAddressV6:
-          description: Property name's description (type is string, format is ipv6 address)
-          type: string
-          format: ipv6
-        stringPassword:
-          description: Property name's description (type is string, format is password)
-          type: string
-          format: password
-        stringHostname:
-          description: Property name's description (type is string, format is hostname)
-          type: string
-          format: hostname
-        stringUri:
-          description: Property name's description (type is string, format is uri)
-          type: string
-          format: uri
-        stringUuid:
-          description: Property name's description (type is string, format is uuid)
-          type: string
-          format: uuid
-        numberProperty:
-          description: Property name's description (type is number)
-          type: number
-          example: 8
-        numberFloat:
-          description: Property name's description (type is number, format is float)
-          type: number
-          format: float
-        numberDouble:
-          description: Property name's description (type is number, format is double)
-          type: number
-          format: double
-        numberGreaterThanOrEquals:
-          description: Property name's description (type is number)
-          type: number
-          minimum: 5
-        numberGreaterThan:
-          description: Property name's description (type is number)
-          type: number
-          exclusiveMinimum: 5
-        numberLessThan:
-          description: Property name's description (type is number)
-          type: number
-          exclusiveMaximum: 8
-        numberLessThanOrEquals:
-          description: Property name's description (type is number)
-          type: number
-          maximum: 8
-        numberRange:
-          description: Property name's description (type is number)
-          type: number
-          minimum: 5
-          maximum: 8
-        numberRangeExclusiveMaximum:
-          description: Property name's description (type is number)
-          type: number
-          minimum: 5
-          exclusiveMaximum: 8
-        numberRangeExclusiveMinimumAndMaximum:
-          description: Property name's description (type is number)
-          type: number
-          exclusiveMinimum: 5
-          exclusiveMaximum: 8
-        numberMultipleOf:
-          description: Property name's description (type is number)
-          type: number
-          multipleOf: 2
-        integerType:
-          description: Property name's description (type is integer)
-          type: integer
-        integer32bit:
-          description: Property name's description (type is integer, format is int32)
-          type: integer
-          format: int32
-        integer64bit:
-          description: Property name's description (type is integer, format is int64)
-          type: integer
-          format: int64
-        booleanProperty:
-          description: Property name's description (type is boolean)
-          type: boolean
-  responses:
-    Problem:
-      description: Problem
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-  headers:
-    ExpiresAfter:
-      description: date in UTC when token expires
-      schema:
+            $ref: '#/definitions/Payment_Response'
+            xml:
+              name: Payment_Response
+definitions:
+  Payment_Response:
+    title: Payment_Message
+    description: The root of the payment response with mandatory fields
+    xml:
+      name: Payment_Message
+    type: object
+    properties:
+      TransactionId:
+        description: >-
+          The unique identifier of this payment. This identifier will be
+          included in every message we sent regarding this transaction.
+        example: b222e078-43b6-42ee-b355-f20ef00485bb
+        type: string
+      Description:
+        description: >-
+          The description that has to be included on the bankstatement of the
+          consumer (Mandatory)
+        example: Donation Fondsen.org through Better World Payments
+        type: string
+      Reference:
+        description: Your unique identifier of the transaction (Mandatory)
+        example: Donation001
+        type: string
+      DateTime:
+        description: The DateTime we received the request
         type: string
         format: date-time
+      Status:
+        title: ''
+        type: object
+        properties:
+          Value:
+            description: "The payment can have one of the following statuses: ’10 Transaction initiated’, ’20 Transaction terminated due by fraude detection’, ‘200 Transaction successful’, ‘300 Transaction failed’, ‘400 Transaction was cancelled by the user’, ‘500 Transaction was rejected by issuer’, ‘600 Transaction was expired’ or ‘700 Transaction pending’ \_"
+            example: 200
+            type: integer
+            format: int32
+          Description:
+            description: >-
+              This is the description of the status of the payment as mentioned
+              in the value field
+            example: Payment Successfull
+            type: string
+          SubStatus:
+            title: ''
+            type: object
+            properties:
+              Code:
+                description: This field contains the substatus of the transaction
+                example: X099
+                type: string
+              Description:
+                description: >-
+                  This field contains the desctiption of the substatus of the
+                  transaction and often contains a next action
+                example: Payment completed successfull. Transaction closed
+                type: string
+      Amount:
+        title: ''
+        type: object
+        properties:
+          Value:
+            description: The amount of the transaction (Mandatory)
+            example: 10
+            type: number
+          Currency:
+            description: >-
+              The currency of the transaction in the ISO 4217 currency code
+              (Mandatory)
+            example: EUR
+            type: string
+          AmountCharity:
+            description: The split payment amount for the charity (Optional)
+            example: 9
+            type: number
+          AmountMerchant:
+            description: The split payment amount for a intermediary platform (Optional)
+            example: 1
+            type: number
+      Notification:
+        title: ''
+        description: The section with the (status based) redirect urls (Mandatory)
+        type: object
+        properties:
+          AuthorizationUrl:
+            description: >-
+              The webpage on your platform we redirect your custome to authorize
+              the transaction with the issuer
+            example: >-
+              https://authorize.fondsen.org/payment/b222e078-43b6-42ee-b355-f20ef00485bb
+            type: string
+          CallbackUrl:
+            description: >-
+              Your resource that needs to receive the status update after
+              completion of the transaction (Optional)
+            example: 'https://status.fondsen.org/?payment_id=61643019899635592'
+            type: string
+          SuccessUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              successful transaction (Mandatory)
+            example: 'https://www.fondsen.org/success?payment_id=61643019899635592'
+            type: string
+          FailedUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              failed transaction (Mandatory)
+            example: 'https://www.fondsen.org/failed?payment_id=61643019899635592'
+            type: string
+          CancelledUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              cancelled transaction (Mandatory)
+            example: 'https://www.fondsen.org/cancelled?payment_id=61643019899635592'
+            type: string
+          ExpiredUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after an
+              expired transaction (Mandatory)
+            example: 'https://www.fondsen.org/expired?payment_id=61643019899635592'
+            type: string
+      Integration:
+        title: ''
+        description: In this section you can set integration settings (Optional)
+        type: object
+        properties:
+          IsTest:
+            description: >-
+              Default value for this field is 'false'. If set to 'true' the
+              transaction is handled as a test payment (Optional)
+            example: false
+            type: boolean
+      Customer:
+        title: ''
+        description: >-
+          The section with the customer information for creating a SEPA DD
+          Mandate (Optional)
+        type: object
+        properties:
+          FirstName:
+            description: Customers First Name (Mandatory when payment method is 'sepa')
+            example: R.
+            type: string
+          LastName:
+            description: Customers Last Name (Mandatory when payment method is 'sepa')
+            example: Waters
+            type: string
+          AddressLine1:
+            description: Customers Address (Mandatory when payment method is 'sepa')
+            example: Address 1
+            type: string
+          AddressLine2:
+            description: Customers Address (Optional)
+            example: Addressline 2
+            type: string
+          PostalCode:
+            description: Customers Address (Mandatory when payment method is 'sepa')
+            example: 1000 AA
+            type: string
+          City:
+            description: Customers City (Mandatory when payment method is 'sepa')
+            example: Amsterdam
+            type: string
+          CountryCode:
+            description: >-
+              Customers Country in the ISO 3166-1 alpha-2 country code
+              (Mandatory when payment method is 'sepa')
+            example: NL
+            type: string
+          LanguageCode:
+            description: Customers Language in the ISO 639-1 code (Optional)
+            example: nl
+            type: string
+          EmailAddress:
+            description: Customers Email Address (Mandatory when payment method is 'sepa')
+            example: customer@fondsen.org
+            type: string
+          BankAccount:
+            title: ''
+            description: >-
+              The section with the customer bank account for creating a SEPA DD
+              Mandate (Mandatory when payment method is 'sepa')
+            type: object
+            properties:
+              Iban:
+                description: Customers IBAN (Mandatory when payment method is 'sepa')
+                example: NL01RABO123456789
+                type: string
+              AccountHolder:
+                description: >-
+                  Customers Name that is stated on his Bank Account (Mandatory
+                  when payment method is 'sepa')
+                example: R. Waters
+                type: string
+              BankAccountId:
+                description: >-
+                  The unique identifier for the bank account of the customer
+                  (only with payment method 'sepa')
+                example: ba4c78d73c083150b62ebc2d377aa9de
+                type: string
+          CustomerId:
+            description: >-
+              The unique identifier for the customer (only with payment method
+              'sepa')
+            example: 8e889bd1662f89af71091efeca2d0f58
+            type: string
+          MandateId:
+            description: >-
+              The unique identifier for the mandate that this customer has
+              signed (only with payment method 'sepa')
+            example: 08d8cd342dabf7f475bfb52c92e8b301
+            type: string
+      PaymentMethod:
+        title: ''
+        type: object
+        properties:
+          Name:
+            description: >-
+              The payment method you want to use for this transaction. You can
+              use the values 'ideal', 'creditcard', 'paypal', 'debitcard',
+              ‘paypal’ and sepa' (Mandatory)
+            example: ideal
+            type: string
+          Issuer:
+            description: >-
+              The issuer of the payment method. You can use the values payment
+              methods BIC-codes banks with ‘ideal' , 'mastercard’ and 'visa'
+              with ‘creditcard' and ‘bancontact' with ‘debitcard' (Optional)
+            example: INGBNL2A
+            type: string
+          Action:
+            description: >-
+              The action you want to preform. This field can have the value
+              'pay' or 'refund' (Mandatory)
+            example: pay
+            type: string
+          Recurring:
+            description: >-
+              Default value is 'false' and can be set to 'true' when using
+              payment method 'sepa'. (Optional)
+            example: false
+            type: boolean
+          IssuerResponse:
+            title: ''
+            description: >-
+              This section contains the information the issuer returns after
+              completion of the payment
+            type: object
+            properties:
+              CustomerName:
+                description: >-
+                  The name of the customer as know with it’s issuer (only with
+                  ‘ideal’, ‘debitcard’, 'sofort' and ‘creditcard’)
+                example: R. Waters
+                type: string
+              CustomerIban:
+                description: >-
+                  The IBAN of the customers as processed by it’s issuer (only
+                  with ‘ideal’, ‘debitcard’ and ‘sofort’’)
+                example: NL01RABO123456789
+                type: string
+              CustomerBic:
+                description: The BIC number of the consumers issuer (only with ‘ideal’)
+                example: INGBNL2A
+                type: string
+              IssuerName:
+                description: The name of the consumers issuer (only with ‘ideal’)
+                example: Rabobank
+                type: string
+              IssuerOrderid:
+                description: >-
+                  The Order Identifier of the consumers issuer (only with
+                  ‘ideal’)
+                example: Fondsen0001
+                type: string
+              IssuerTransactionid:
+                description: >-
+                  The Order Identifier of the consumers issuer (only with
+                  ‘ideal’)
+                example: '1030200300400500'
+                type: string
+              ConsumerEmail:
+                description: >-
+                  The email address of the consumers as known by the issuer
+                  (only with ‘paypal’)
+                example: customer@fondsen.org
+                type: string
+              ConsumerCountry:
+                description: >-
+                  The country of the consumers as known by the issuer (only with
+                  ‘paypal’)
+                example: NL
+                type: string
+              CustomerFirstname:
+                description: >-
+                  The first name of the consumers as known by the issuer (only
+                  with ‘paypal’)
+                example: Roger
+                type: string
+              CustomerLastname:
+                description: >-
+                  The last name of the consumers as known by the issuer (only
+                  with ‘paypal’)
+                example: Waters
+                type: string
+              CustomerAddress:
+                description: >-
+                  The address of the consumers as known by the issuer (only with
+                  ‘paypal’)
+                example: Streetwise 1
+                type: string
+              CustomerZipcode:
+                description: >-
+                  The zip code of the consumers as known by the issuer (only
+                  with ‘paypal’)
+                example: 1000 AA
+                type: string
+              CustomerCity:
+                description: >-
+                  The city of the consumers as known by the issuer (only with
+                  ‘paypal’)
+                example: Amsterdam
+                type: string
+              CustomerRegion:
+                description: >-
+                  The region of the consumers as known by the issuer (only with
+                  ‘paypal’)
+                example: Noord-Holland
+                type: string
+              CustomerCardnumber:
+                description: >-
+                  The partly visible creditcard number of the consumer (only
+                  with ‘creditcard’)
+                example: 1234********5678
+                type: string
+              CustomerCardexportation:
+                example: 05-2025
+                type: string
+  Payment_Request:
+    title: Payment_Message
+    description: The root of the payment request with mandatory fields
+    xml:
+      name: Payment_Message
+    type: object
+    properties:
+      Description:
+        description: >-
+          The discription that has to be included on the bankstatement of the
+          consumer (Mandatory)
+        example: Donation Fondsen.org through Better World Payments
+        type: string
+      Reference:
+        description: Your unique identifier of the transaction (Mandatory)
+        example: '61643019899635592'
+        type: string
+      PaymentMethod:
+        title: ''
+        description: 'Section with payment methods  (Mandatory) '
+        type: object
+        properties:
+          Name:
+            description: >-
+              The payment method you want to use for this transaction. You can
+              use the values 'ideal', 'creditcard', 'paypal', 'debitcard',
+              ‘paypal’ and sepa' (Mandatory)
+            example: ideal
+            type: string
+          Issuer:
+            description: >-
+              The issuer of the payment method. You can use the values payment
+              methods BIC-codes banks with ‘ideal' , 'mastercard’ and 'visa'
+              with ‘creditcard' and ‘bancontact' with ‘debitcard' (Optional)
+            example: INGBNL2A
+            type: string
+          Action:
+            description: >-
+              The action you want to preform. This field can have the value
+              'pay' or 'refund' (Mandatory)
+            example: pay
+            type: string
+          Recurring:
+            description: >-
+              Default value is 'false' and can be set to 'true' when using
+              payment method 'sepa'. (Optional)
+            example: true
+            type: boolean
+      Amount:
+        title: ''
+        type: object
+        properties:
+          Value:
+            description: The amount of the transaction (Mandatory)
+            example: 10
+            type: number
+          Currency:
+            description: >-
+              The currency of the transaction in the ISO 4217 currency code
+              (Mandantory)
+            example: EUR
+            type: string
+          AmountCharity:
+            description: The split payment amount for the charity (Optional)
+            example: 9
+            type: number
+          AmountMerchant:
+            description: The split payment amount for a intermediairy plaform (Optional)
+            example: 1
+            type: number
+      Notification:
+        title: ''
+        description: The section with the (status based) redirect urls (Mandatory)
+        type: object
+        properties:
+          CallbackUrl:
+            description: >-
+              Your resource that needs to receive the status update after
+              completion of the transaction (Optional)
+            example: 'https://status.fondsen.org/?payment_id=61643019899635592'
+            type: string
+          SuccessUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              succesful transaction (Mandatory)
+            example: 'https://www.fondsen.org/success?payment_id=61643019899635592'
+            type: string
+          FailedUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              failed transaction (Mandatory)
+            example: 'https://www.fondsen.org/failed?payment_id=61643019899635592'
+            type: string
+          CancelledUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after a
+              cancelled transaction (Mandatory)
+            example: 'https://www.fondsen.org/cancelled?payment_id=61643019899635592'
+            type: string
+          ExpiredUrl:
+            description: >-
+              The webpage on your platform we redirect your customer to after an
+              expired transaction (Mandatory)
+            example: 'https://www.fondsen.org/expired?payment_id=61643019899635592'
+            type: string
+      Integration:
+        title: ''
+        description: In this section you can set integration settings.(Optional)
+        type: object
+        properties:
+          IsTest:
+            description: >-
+              Default value for this field is 'false'. If set to 'true' the
+              transaction is handled as a test payment (Optional)
+            example: true
+            type: boolean
+      Customer:
+        title: ''
+        description: >-
+          The section with the customer information for creating a SEPA DD
+          Mandate (Optional)
+        type: object
+        properties:
+          FirstName:
+            description: Customers First Name (Mandatory when payment method is 'sepa')
+            example: R.
+            type: string
+          LastName:
+            description: Customers Last Name (Mandatory when payment method is 'sepa')
+            example: Waters
+            type: string
+          AddressLine1:
+            description: Customers Address (Mandatory when payment method is 'sepa')
+            example: Address 1
+            type: string
+          AddressLine2:
+            description: Customers Address (Optional)
+            example: Addressline 2
+            type: string
+          PostalCode:
+            description: Customers ZIP Code (Mandatory when payment method is 'sepa')
+            example: 1000 AA
+            type: string
+          City:
+            description: Customers City (Mandatory when payment method is 'sepa')
+            example: Amsterdam
+            type: string
+          CountryCode:
+            description: >-
+              Customers Country in the ISO 3166-1 alpha-2 country code
+              (Mandatory when payment method is 'sepa')
+            example: NL
+            type: string
+          LanguageCode:
+            description: Customers Language in the ISO 639-1 code (Optional)
+            example: nl
+            type: string
+          EmailAddress:
+            description: Customers Email Address (Mandatory when payment method is 'sepa')
+            example: customer@fondsen.org
+            type: string
+          BankAccount:
+            title: ''
+            description: >-
+              The section with the customer bank account for creating a SEPA DD
+              Mandate (Optional)
+            type: object
+            properties:
+              Iban:
+                description: Customers IBAN (Mandatory when payment method is 'sepa')
+                example: NL01RABO123456789
+                type: string
+              AccountHolder:
+                description: >-
+                  Customers Name that is stated on his Bank Account (Mandatory
+                  when payment method is 'sepa')
+                example: R. Waters
+                type: string
+tags:
+  - name: payments
+    description: Our End Points for Better World Payments
