@@ -61,7 +61,7 @@ paths:
         '200':
           description: successful operation
           schema:
-            type: file
+            type: string
   '/payments/status/{PaymentId}':
     get:
       tags:
@@ -84,6 +84,9 @@ paths:
           in: header
           description: "You can Authorize using Basic Authorization:\r\n\r\nyour_code:your_token \r\n\r\nbase64 encrypted (don't forget the ':')"
           type: string
+       security:
+        - main_auth:
+            - read:users
       responses:
         '200':
           description: successful operation
