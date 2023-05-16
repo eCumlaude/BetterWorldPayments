@@ -18,6 +18,8 @@ host: payments-sandbox.fondsen.org
 basePath: /v1
 schemes:
   - http
+security:
+- app_id: []
 paths:
   /payments/request:
     post:
@@ -44,6 +46,12 @@ paths:
             $ref: '#/definitions/Payment_Response'
             xml:
               name: Payment_Response
+   securitySchemes:
+    app_id:
+      type: apiKey
+      description: We Basic Authorization to validate access to our API. You can generate this token by base64 encrypting:\r\n\r\nyour_code:your_token (don't forget the ':')
+      name: appid
+      in: header
   /payments/ideal/issuers:
     get:
       tags:
@@ -94,6 +102,12 @@ paths:
             $ref: '#/definitions/Payment_Response'
             xml:
               name: Payment_Response
+    securitySchemes:
+      app_id:
+      type: apiKey
+      description: We Basic Authorization to validate access to our API. You can generate this token by base64 encrypting:\r\n\r\nyour_code:your_token (don't forget the ':')
+      name: appid
+      in: header
 definitions:
   Payment_Response:
     title: Payment_Message
@@ -613,3 +627,9 @@ definitions:
 tags:
   - name: payments
     description: Our End Points for Better World Payments
+securitySchemes:
+    app_id:
+      type: apiKey
+      description: We Basic Authorization to validate access to our API. You can generate this token by base64 encrypting:\r\n\r\nyour_code:your_token (don't forget the ':')
+      name: appid
+      in: header
